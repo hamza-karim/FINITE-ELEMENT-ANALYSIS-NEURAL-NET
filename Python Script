@@ -1,0 +1,133 @@
+# Import Necessary Libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import shap
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import mean_squared_error, r2_score
+import plotly.express as px
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.utils import plot_model
+from sklearn.preprocessing import StandardScaler
+
+
+# load the dataset
+data = pd.read_csv('Buckling Dataset.csv')
+y = data['Buckling Strength (MPa)']
+x = data.drop(['Buckling Strength (MPa)', 'Overall Length (L) in mm'], axis=1)
+# splitting test train dataset
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=100)
+
+#Polynomial Regression (degree 2)
+poly = PolynomialFeatures(degree=2, include_bias=True)
+x_train_poly = poly.fit_transform(x_train)
+x_test_poly = poly.transform(x_test)
+model = LinearRegression()
+model.fit(x_train_poly, y_train)
+y_poly_train_pred = model.predict(x_train_poly)
+y_poly_test_pred = model.predict(x_test_poly)
+train_poly_mse = mean_squared_error(y_train, y_poly_train_pred)
+train_poly_r2 = r2_score(y_train, y_poly_train_pred)
+test_poly_mse = mean_squared_error(y_test, y_poly_test_pred)
+test_poly_r2 = r2_score(y_test, y_poly_test_pred)
+
+#Linear Regression
+linear_model = LinearRegression()
+linear_model.fit(x_train, y_train)
+y_train_pred = linear_model.predict(x_train)
+y_test_pred = linear_model.predict(x_test)
+train_linear_mse = mean_squared_error(y_train, y_train_pred)
+train_linear_r2 = r2_score(y_train, y_train_pred)
+test_linear_mse = mean_squared_error(y_test, y_test_pred)
+test_linear_r2 = r2_score(y_test, y_test_pred)
+
+#Random Forest Regressor 
+random_forest = RandomForestRegressor(max_depth=5, random_state=100)
+random_forest.fit(x_train, y_train)
+y_random_train_predict = random_forest.predict(x_train)
+y_random_test_predict = random_forest.predict(x_test)
+train_random_mse = mean_squared_error(y_train, y_random_train_predict)
+train_random_r2 = r2_score(y_train, y_random_train_predict)
+test_random_mse = mean_squared_error(y_test, y_random_test_predict)
+test_random_r2 = r2_score(y_test, y_random_test_predict)
+
+# KNN method 
+# Performing KNN
+knn_regressor = KNeighborsRegressor(n_neighbors=6)
+knn_regressor.fit(x_train, y_train)
+knn_predictions = knn_regressor.predict(x_test)
+
+#Performing Decision Tree
+dt_regressor = DecisionTreeRegressor()
+dt_regressor.fit(x_train, y_train)
+dt_predictions_train = dt_regressor.predict(x_train)
+dt_predictions_test = dt_regressor.predict(x_test)
+train_dt_mse = mean_squared_error(y_train, dt_predictions_train)
+train_dt_r2 = r2_score(y_train, dt_predictions_train)
+test_dt_mse = mean_squared_error(y_test, dt_predictions_test)
+test_dt_r2 = r2_score(y_test, dt_predictions_test)
+
+# Performing ANN
+# Standardize the features
+scaler = StandardScaler()
+x_train_scaled = scaler.fit_transform(x_train)
+x_test_scaled = scaler.transform(x_test)
+
+#Build the neural network model
+model = Sequential()
+model.add(Dense(8, activation='relu', input_dim=x_train.shape[1]))
+model.add(Dense(8, activation='relu'))
+model.add(Dense(8, activation='relu'))
+model.add(Dense(1, activation='linear'))
+
+# Compile the model
+model.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae'])
+
+# Train the model
+history = model.fit(x_train_scaled, y_train, epochs=350, batch_size=8, validation_split=0.2, verbose=2)
+
+# Visualize the model architecture
+plot_model(model, show_shapes=True, show_layer_names=True)
+
+# Evaluate the model on the training set
+y_train_pred = model.predict(x_train_scaled)
+
+# Calculate training metrics
+train_ann_mse = mean_squared_error(y_train, y_train_pred)
+train_ann_r2 = r2_score(y_train, y_train_pred)
+
+# Evaluate the model on the test set
+y_test_pred = model.predict(x_test_scaled)
+
+# Calculate test metrics
+test_ann_mse = mean_squared_error(y_test, y_test_pred)
+test_ann_r2 = r2_score(y_test, y_test_pred)
+
+
+# printing comparision table
+comparison_data = {
+    'Model': ['Polynomial Regression (Degree 2)', 'Linear Regression', 'KNN Regressor', 'Decision Tree Regressor', 'Artificial Neural Network (ANN)', 'Random Forest Regressor'],
+    'Train MSE': [train_poly_mse, train_linear_mse, mean_squared_error(y_train, knn_regressor.predict(x_train)), train_dt_mse, train_ann_mse, train_random_mse],
+    'Train R2 Score': [train_poly_r2, train_linear_r2, r2_score(y_train, knn_regressor.predict(x_train)), train_dt_r2, train_ann_r2, train_random_r2], 
+    'Test MSE': [test_poly_mse, test_linear_mse, mean_squared_error(y_test, knn_predictions), test_dt_mse, test_ann_mse, test_random_mse],
+    'Test R2 Score': [test_poly_r2, test_linear_r2, r2_score(y_test, knn_predictions), test_dt_r2, test_ann_r2, test_random_r2]
+}
+
+# Create a DataFrame for the comparison
+comparison_table = pd.DataFrame(comparison_data)
+# Print the comparison table
+print("Comparison Table:")
+print(comparison_table)
+
+
+
+
